@@ -4,50 +4,69 @@ var request = require("request");
 var promisify = require('bluebird').promisify;
 var co = require('co');
 var mysql      = require('mysql');
+var cron = require('node-cron');
+var _ = require('lodash');
+
 var connection = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
   password : '',
   database : 'iphone'
 });
-
-connection.connect();
-
-
 var http = promisify(function (options, cb) {
         request(options, function (error, response, body) {
           cb(error, response);
         })
       }),
+      query = promisify(function(options, cb) {
+          connection.query(options, function(err, result){
+            result = JSON.stringify(result);
+            cb(err, result);
+          });
+      }),
       dom = promisify(jsdom.env);
+      
+// var task = cron.schedule('* * * * *', function(){
+//   console.log('cron job has started');
+
+
+
 
 co(function *() {
-      var response = yield http('http://iplus.com.ge/ge/category/9');
-      var window = yield dom(response.body, ["http://code.jquery.com/jquery.js"]);
-      var $ = window.$;
-      var total = parseInt($('ul.pagination li:nth-last-child(2) a').text());
-      return total;
-    }).then(function (total) {
-        var data = [];
+      var response = yield http('http://iplus.com.ge/ge/category/9')
+      ,window = yield dom(response.body, ["http://code.jquery.com/jquery.js"])
+      ,$ = window.$
+      ,total = parseInt($('ul.pagination li:nth-last-child(2) a').text())
+      ,number
+      ,colors = yield query('SELECT * FROM colors');
+      
+      console.log(colors);
+      var result = {total: total, colors:colors};
+      return result;
+    }).then(function (result) {
+        var data = []
             co(function *() {
-                for (i=1; i <= total; i++) {
+                for (i=1; i <= result.total; i++) {
                     var response = yield http('http://iplus.com.ge/ge/category/9?page=' + i);
                     var window = yield dom(response.body, ["http://code.jquery.com/jquery.js"]);
                     var $ = window.$;
-                        var number;
-                        $('.post-body').each(function(){
-                            var text = $(this).find('a h3').text();
-                            var re = /\w*GB\b/g;
-                            var gb = text.match(re);
-                            // console.log(matches_array[0])
-                            // console.log(text);
-                            price = $(this).find('p:first-of-type span').text();
-                            price = parseFloat(price.trim());
-                            price = Math.round(price * 100) / 100;
+                    $('.post-body').each(function(){
+                        var text = $(this).find('a h3').text();
+                        var re = /\w*GB\b/g;
+                        var gb = text.match(re);
+                        // console.log(matches_array[0])
+                        // console.log(text);
+                        //es minda
+                        result.colors.forEach(co (function* (val){
+                          console.log(yield val);
+                        }));
+                        price = $(this).find('p:first-of-type span').text();
+                        price = parseFloat(price.trim());
+                        price = Math.round(price * 100) / 100;
 
-                            data.push([text, price, gb[0]]);
-                            // console.log(number);
-                        });
+                        data.push([text, price, gb[0]]);
+                        // console.log(number);
+                    });
                 }
             }).then(function(){
                 console.log(data);
@@ -60,40 +79,12 @@ co(function *() {
                 if (err) throw err;
                   console.log('The solution is: ', result.insertId);
                 });
-                connection.end();
 
             })
-
-
-
-            // request({uri: 'http://iplus.com.ge/ge/category/9?page=' + i}, function(err, response, body){
-            // var self = this;
-            // self.items = new Array();//I feel like I want to save my results in an array
-         
-            // if(err && response.statusCode !== 200){console.log('Request error.');}
-            //     jsdom.env({
-            //         html: body,
-            //         scripts: ['http://code.jquery.com/jquery.js'],
-            //         done:function(err, window){
-            //             var $ = window.jQuery;
-            //             var number;
-            //             $('.post-body').each(function(){
-            //                 var text = $(this).find('a h3').text();
-            //                 var re = /\w*GB\b/g;
-            //                 var matches_array = text.match(re);
-            //                 console.log(matches_array[0])
-            //                 console.log(text);
-            //                 number = $(this).find('p:first-of-type span').text();
-            //                 number = parseFloat(number.trim());
-            //                 number = Math.round(number * 100) / 100;
-
-            //                 data.push([text, number]);
-            //                 // console.log(number);
-            //             });
-            //         }
-            //     });
-            // });
-        
-        
     });
+
+// }, false);
+// task.start();
+
+
 
