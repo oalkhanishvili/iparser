@@ -20,7 +20,7 @@ var http = promisify(function (options, cb) {
       }),
       query = promisify(function(options, cb) {
           connection.query(options, function(err, result){
-            result = JSON.stringify(result);
+            result = JSON.parse(JSON.stringify(result));
             cb(err, result);
           });
       }),
@@ -45,11 +45,16 @@ co(function *() {
       return result;
     }).then(function (result) {
         var data = []
+        result.colors = _.sortBy(result.colors,[function(o){
+                          return o.title.length;
+                        }]);
+                        console.log(result.colors)
             co(function *() {
                 for (i=1; i <= result.total; i++) {
                     var response = yield http('http://iplus.com.ge/ge/category/9?page=' + i);
                     var window = yield dom(response.body, ["http://code.jquery.com/jquery.js"]);
                     var $ = window.$;
+                    
                     $('.post-body').each(function(){
                         var text = $(this).find('a h3').text();
                         var re = /\w*GB\b/g;
@@ -57,14 +62,15 @@ co(function *() {
                         // console.log(matches_array[0])
                         // console.log(text);
                         //es minda
-                        result.colors.forEach(co (function* (val){
-                          console.log(yield val);
-                        }));
-                        price = $(this).find('p:first-of-type span').text();
+                        
+                        var color = result.colors.filter(function(color){
+                            return _.includes(text, color.title);
+                        }).pop();
+                        var price = $(this).find('p:first-of-type span').text();
                         price = parseFloat(price.trim());
                         price = Math.round(price * 100) / 100;
 
-                        data.push([text, price, gb[0]]);
+                        data.push([text, price, gb[0], color.id]);
                         // console.log(number);
                     });
                 }
@@ -75,12 +81,14 @@ co(function *() {
                   console.log('The solution is: ', result.affectedRows);
                 });
                 
-                connection.query('INSERT INTO `plus` (`name`, `price`, `size`) VALUES ?', [data], function(err, result) {
+                connection.query('INSERT INTO `plus` (`name`, `price`, `size`, `colors_id`) VALUES ?', [data], function(err, result) {
                 if (err) throw err;
                   console.log('The solution is: ', result.insertId);
                 });
 
-            })
+            },function (err) {
+             console.error(err.stack);
+          })
     });
 
 // }, false);
