@@ -119,8 +119,9 @@ exports.appleCity = function() {
                     
                     $('.prod-block.fleft').each(function(){
                         var text = $(this).find('h2 a').text().toLowerCase().trim();
-                        var re = /\w*gb\b/g;
+                        var re = /(\w*gb|\w*\sgb)\b/g;
                         var gb = text.match(re);
+                        console.log(gb)
                         text = text.replace(gb, '').replace(/,/g , '');
                         // console.log(matches_array[0])
                         //es minda
