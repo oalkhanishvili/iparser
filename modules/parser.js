@@ -3,16 +3,10 @@ var jsdom = require("jsdom");
 var request = require("request");
 var promisify = require('bluebird').promisify;
 var co = require('co');
-var mysql      = require('mysql');
+var connection = require('../modules/database.js');
 var cron = require('node-cron');
 var _ = require('lodash');
 
-var connection = mysql.createConnection({
-  host     : 'localhost',
-  user     : 'root',
-  password : '',
-  database : 'iphone'
-});
 var http = promisify(function (options, cb) {
         request(options, function (error, response, body) {
           cb(error, response);
